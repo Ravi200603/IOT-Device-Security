@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT MitM Protection Dashboard</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Tailwind Config -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'] },
+                    colors: {
+                        'primary-blue': '#1e3a8a',
+                        'secondary-green': '#10b981',
+                        'alert-red': '#ef4444',
+                        'bg-light': '#f8fafc',
+                        'card-bg': '#ffffff',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        .toast-enter-active,
+        .toast-leave-active {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .toast-enter-from,
+        .toast-leave-to {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+    </style>
+</head>
+
+<body class="bg-bg-light min-h-screen font-sans antialiased">
+
+    <!-- Header -->
+    <header class="bg-primary-blue shadow-lg">
+        <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-white">MitM Protector - Security Console</h1>
+            <span class="px-3 py-1 text-sm font-medium rounded-full bg-secondary-green text-white shadow-md">
+                System Online
+            </span>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto py-8 sm:px-6 lg:px-8">
+
+        <!-- Manual Device Entry -->
+        <div class="bg-white shadow-md rounded-lg p-4 mb-6 flex items-center space-x-4">
+            <div class="flex-grow">
+                <label class="block text-sm font-medium text-gray-700">Add Device Manually</label>
+                <div class="mt-1 flex rounded-md shadow-sm">
+                    <input id="manual-device-id"
+                        class="flex-1 block w-full p-2 border rounded-l-md border-gray-300 focus:ring-primary-blue"
+                        placeholder="e.g. bus001">
+                    <button id="add-device-btn"
+                        class="px-4 py-2 bg-primary-blue text-white rounded-r-md hover:bg-blue-800 shadow-md">
+                        Add Device
+                    </button>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">Useful when permission denied prevents listing all devices.</p>
+            </div>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+            <!-- LEFT -->
+            <div class="lg:col-span-2 space-y-6">
+
+                <!-- Live Occupancy -->
+                <div class="bg-gradient-to-r from-blue-600 to-blue-500 shadow-xl rounded-xl p-6 text-white flex justify-between items-center">
+                    <div>
+                        <h2 class="text-2xl font-semibold flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mr-3" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7M7 20H2v-2a3 3 0 015.356-1.857M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            Live Occupancy (BUS001)
+                        </h2>
+                        <p class="text-blue-100 mt-1 text-sm">Real-time passenger count</p>
+                    </div>
+                    <div class="text-right">
+                        <span id="bus001-occupancy" class="text-5xl font-bold">--</span>
+                        <p class="text-sm text-blue-200 mt-1">People on board</p>
+                    </div>
+                </div>
+
+                <!-- Active Devices -->
+                <div class="bg-card-bg shadow-xl rounded-xl p-6">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Active Devices (<span id="active-count">0</span>)</h2>
+                    <div id="active-devices-container" class="space-y-4">
+                        <p class="text-gray-400 italic p-4 text-center">Loading...</p>
+                    </div>
+                </div>
+
+                <!-- Blocked Devices -->
+                <div class="bg-card-bg shadow-xl rounded-xl p-6">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Blocked Devices (<span id="blocked-count">0</span>)</h2>
+                    <div id="blocked-devices-container" class="space-y-4">
+                        <p class="text-gray-400 italic p-4 text-center">Loading...</p>
+                    </div>
+                </div>
+
+                <!-- Flags -->
+                <div class="bg-card-bg shadow-xl rounded-xl p-6 border-l-4 border-yellow-500">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-4">Flags & Unusual Activities</h2>
+                    <div id="flags-container" class="space-y-2 max-h-60 overflow-y-auto">
+                        <p id="no-flags" class="text-gray-400 italic text-center p-2">No unusual activity detected.</p>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT LOGS -->
+            <div class="lg:col-span-1">
+                <div class="bg-gray-800 text-white shadow-xl rounded-xl p-6 h-full flex flex-col">
+                    <h2 class="text-2xl font-semibold mb-4 text-yellow-300">System Logs</h2>
+                    <div id="log-output"
+                        class="flex-grow bg-gray-900 p-3 rounded-lg overflow-y-auto text-sm max-h-[80vh] min-h-[300px]">
+                        <p class="text-gray-400 italic p-4 text-center">Loading logs...</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="toast-container" class="fixed bottom-5 right-5 z-50"></div>
+
+    </main>
+
+    <!-- Firebase + App Logic -->
+    <script type="module">
+        // Firebase Imports (v11)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getDatabase, ref, onValue, onChildAdded, update } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // Firebase Config
+        const firebaseConfig = {
+            apiKey: "AIzaSyA93iikJpQCp8clILWw4pKvYHunhLdymy4",
+            authDomain: "iot-bus-pi-security.firebaseapp.com",
+            databaseURL: "https://iot-bus-pi-security-default-rtdb.firebaseio.com",
+            projectId: "iot-bus-pi-security",
+            storageBucket: "iot-bus-pi-security.firebasestorage.app",
+            messagingSenderId: "477891830544",
+            appId: "1:477891830544:web:af46c57ec2776c90b9fb95",
+            measurementId: "G-7XN2GLSY7P"
+        };
+
+        // Init Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const rtdb = getDatabase(app);
+
+        await signInAnonymously(auth);
+
+        // DOM
+        const activeContainer = document.getElementById("active-devices-container");
+        const blockedContainer = document.getElementById("blocked-devices-container");
+        const activeCount = document.getElementById("active-count");
+        const blockedCount = document.getElementById("blocked-count");
+        const logOutput = document.getElementById("log-output");
+        const occupancyDisplay = document.getElementById("bus001-occupancy");
+        let devices = [];
+
+        /* ============================================
+           DEVICE LISTENER
+        ============================================= */
+        onValue(ref(rtdb, "IoT/status"), snapshot => {
+            const data = snapshot.val() || {};
+            devices = Object.keys(data).map(id => ({
+                id,
+                status: data[id].blocked ? "BLOCKED" : "ACTIVE",
+                ip: data[id].ip || "N/A",
+                lastSeen: data[id].lastSeen
+                    ? new Date(data[id].lastSeen).toLocaleTimeString()
+                    : "Never"
+            }));
+            renderDevices();
+        });
+
+        function renderDevices() {
+            activeContainer.innerHTML = "";
+            blockedContainer.innerHTML = "";
+
+            const active = devices.filter(d => d.status === "ACTIVE");
+            const blocked = devices.filter(d => d.status === "BLOCKED");
+
+            activeCount.textContent = active.length;
+            blockedCount.textContent = blocked.length;
+
+            if (active.length === 0)
+                activeContainer.innerHTML = `<p class="text-gray-400 italic text-center">No active devices.</p>`;
+            else
+                active.forEach(d => activeContainer.appendChild(createCard(d)));
+
+            if (blocked.length === 0)
+                blockedContainer.innerHTML = `<p class="text-gray-400 italic text-center">No blocked devices.</p>`;
+            else
+                blocked.forEach(d => blockedContainer.appendChild(createCard(d)));
+        }
+
+        function createCard(device) {
+            const div = document.createElement("div");
+            div.className = "p-4 border rounded-lg shadow-md bg-card-bg flex justify-between items-center";
+            div.innerHTML = `
+                <div>
+                    <p class="font-bold text-lg">${device.id}</p>
+                    <p class="text-sm text-gray-500">IP: ${device.ip}</p>
+                    <p class="text-xs text-gray-400">Last Seen: ${device.lastSeen}</p>
+                </div>
+                <span class="px-3 py-1 rounded-full ${
+                    device.status === "BLOCKED"
+                        ? "bg-alert-red text-white"
+                        : "bg-secondary-green text-white"
+                }">${device.status}</span>
+            `;
+            return div;
+        }
+
+        /* ============================================
+           OLD LOGS + NEW LOG STREAM
+        ============================================= */
+        const logsRef = ref(rtdb, "IoT/logs");
+
+        // 1️⃣ Load ALL OLD logs once
+        onValue(logsRef, snapshot => {
+            const allLogs = snapshot.val();
+            if (!allLogs) return;
+
+            let merged = [];
+
+            for (let deviceId in allLogs) {
+                const entries = allLogs[deviceId];
+                for (let key in entries) {
+                    const log = entries[key];
+                    merged.push({
+                        deviceId,
+                        peopleEntered: log.peopleEntered,
+                        peopleExited: log.peopleExited,
+                        timestamp: new Date(log.timestamp * 1000)
+                    });
+                }
+            }
+
+            merged.sort((a, b) => b.timestamp - a.timestamp);
+
+            logOutput.innerHTML = "";
+            merged.forEach(log => appendLog(log, "OLD"));
+        });
+
+        // 2️⃣ Stream new logs in real-time
+        onChildAdded(logsRef, snapshot => {
+            const deviceId = snapshot.key;
+            const entries = snapshot.val();
+            for (let key in entries) {
+                appendLog({
+                    deviceId,
+                    peopleEntered: entries[key].peopleEntered,
+                    peopleExited: entries[key].peopleExited,
+                    timestamp: new Date(entries[key].timestamp * 1000)
+                }, "NEW");
+
+                if (deviceId === "bus001") {
+                    const occ = entries[key].peopleEntered - entries[key].peopleExited;
+                    occupancyDisplay.textContent = occ < 0 ? 0 : occ;
+                }
+            }
+        });
+
+        function appendLog(log, type) {
+            const time = log.timestamp.toLocaleTimeString("en-US", {
+                hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+            });
+
+            const div = document.createElement("div");
+            div.className = "mb-1";
+
+            div.innerHTML = `
+                <span class="text-gray-500">[${time}]</span>
+                <span class="${type === 'NEW' ? 'text-secondary-green' : 'text-gray-400'} font-bold">${type}</span>
+                <span class="text-white">[${log.deviceId}] Entered: ${log.peopleEntered} / Exited: ${log.peopleExited}</span>
+            `;
+
+            if (type === "NEW") logOutput.prepend(div);
+            else logOutput.appendChild(div);
+        }
+
+    </script>
+</body>
+
+</html>
