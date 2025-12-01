@@ -36,6 +36,7 @@ The Raspberry Pi sends encrypted logs using:
 Encrypted text is encoded to HEX before transmission so HTTP cannot break the payload.
 
 ### Payload Before Encryption:
+
 ```json
 {
   "deviceId": "pi001",
@@ -43,61 +44,42 @@ Encrypted text is encoded to HEX before transmission so HTTP cannot break the pa
   "exited": 0,
   "timestamp": 1730000000
 }
-
-
-2. Firebase Cloud Function (Main Security Layer)
+🔐 2. Firebase Cloud Function (Main Security Layer)
 All Pi uploads go to:
 https://<region>-smartbus.cloudfunctions.net/iotUpload
-
-
 The Cloud Function performs the following security checks:
 ✔ 1. Decryption
-XOR decryption
+XOR decrypt
 HEX decode
-JSON parse validation
+JSON validation
 Invalid payload → rejected immediately.
 ✔ 2. Timestamp Freshness (Anti-Replay)
-Rejects any packet older than:
-> 5 seconds drift
-
-
-3. Rate Limiting
+Reject any packet older than 5 seconds drift.
+✔ 3. Rate Limiting
 Each device can only send:
 15 requests per minute
-If exceeded → flagged → blocked on repeated violations.
-
-4. Value Validation
+If exceeded → flagged → blocked.
+✔ 4. Value Validation
 Accept only logical values:
 entered >= 0
 exited >= 0
-no huge numbers
-no negative inputs
-This stops attackers from injecting fake data.
+no negative or impossible values
+Prevents false information injection attacks.
 ✔ 5. ML-Based Anomaly Detection
-A lightweight Isolation Forest model checks:
+Isolation Forest detects:
 spikes
 abnormal patterns
-unusual values
-bot-like repeating patterns
-The Pi itself sends clean data, so ML helps catch attacker scripts trying to poison logs.
+repeated/bot-like values
 ✔ 6. Device Blocking System
-If a device:
-fails validation too often
-floods requests
-sends suspicious ML patterns
-It is automatically placed into:
+Devices violating rules are auto-blocked:
 /devices/{deviceId}/status = "blocked"
-Blocked devices are denied until manually unblocked
-
-3. Raspberry Pi Device Logic
-The Raspberry Pi does all counting:
-✔ Counts entered and exited
-from your YOLO tracking logic
-keeps memory of tracking IDs
-calculates increments
-sends only the delta values
-✔ Sends data every 5 seconds
-Runs a small Flask or Python script like:
+🤖 3. Raspberry Pi Device Logic
+The Raspberry Pi handles all counting:
+Tracks people entering/exiting
+Uses YOLO-based tracking logic
+Sends only delta values
+Sends encrypted updates every 5 seconds
+Example:
 payload = {
   "deviceId": DEVICE,
   "entered": entered,
@@ -105,14 +87,9 @@ payload = {
   "timestamp": int(time.time())
 }
 encrypted = xor_encrypt(json.dumps(payload), KEY)
-Uploads via:
 requests.post(CLOUD_ENDPOINT, json={"data": encrypted})
 📡 Firebase Data Layout
 /iot_data/{deviceId}/logs/{logId}
-    entered:
-    exited:
-    timestamp:
-
 /devices/{deviceId}/status
 /devices/{deviceId}/lastActive
 /blocked_history/{entryId}
@@ -135,11 +112,7 @@ requests.post(CLOUD_ENDPOINT, json={"data": encrypted})
        v
 [Firebase Realtime Database]
  - stores only valid logs
-
-
-## 🎥 Project Demo Video
-
+🎥 Project Demo Video
 [![Watch the Demo](https://img.youtube.com/vi/8OjqJszHSk4/maxresdefault.jpg)](https://youtu.be/8OjqJszHSk4)
 
 > Click the thumbnail to watch the full demo video on YouTube.
-
