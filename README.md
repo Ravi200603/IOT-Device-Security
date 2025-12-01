@@ -135,3 +135,11 @@ requests.post(CLOUD_ENDPOINT, json={"data": encrypted})
        v
 [Firebase Realtime Database]
  - stores only valid logs
+
+
+## 🎥 Project Demo Video
+
+[![Watch the Demo](https://img.youtube.com/vi/8OjqJszHSk4/maxresdefault.jpg)](https://youtu.be/8OjqJszHSk4)
+
+> Click the thumbnail to watch the full demo video on YouTube.
+
