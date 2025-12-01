@@ -44,6 +44,7 @@ Encrypted text is encoded to HEX before transmission so HTTP cannot break the pa
   "exited": 0,
   "timestamp": 1730000000
 }
+```
 🔐 2. Firebase Cloud Function (Main Security Layer)
 All Pi uploads go to:
 https://<region>-smartbus.cloudfunctions.net/iotUpload
